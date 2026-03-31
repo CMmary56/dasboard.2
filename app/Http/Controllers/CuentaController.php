@@ -10,6 +10,7 @@ class CuentaController extends Controller
     // GET /api/cuentas
     public function index()
     {
+        // Se usa 1 temporalmente en lugar de auth()->id()
         $cuentas = Cuenta::where('user_id', 1)
             ->orderBy('tipo')
             ->get();
@@ -31,7 +32,7 @@ class CuentaController extends Controller
         ]);
 
         $cuenta = Cuenta::create(array_merge($datos, [
-            'user_id' => 1
+            'user_id' => 1 // Se usa 1 temporalmente
         ]));
 
         return response()->json([
@@ -44,12 +45,49 @@ class CuentaController extends Controller
     public function show($id)
     {
         $cuenta = Cuenta::where('id', $id)
-            ->where('user_id', 1)
+            ->where('user_id', 1) // Se usa 1 temporalmente
             ->firstOrFail();
 
         return response()->json([
             'success' => true,
             'data' => $cuenta
+        ]);
+    }
+
+    // PUT /api/cuentas/{id}
+    public function update(Request $request, $id)
+    {
+        $cuenta = Cuenta::where('id', $id)
+            ->where('user_id', 1) // Se usa 1 temporalmente
+            ->firstOrFail();
+
+        $datos = $request->validate([
+            'tipo' => 'sometimes|in:corriente,ahorro',
+            'numero_cuenta' => 'sometimes|string|max:20',
+            'saldo' => 'sometimes|numeric|min:0',
+            'moneda' => 'sometimes|in:PEN,USD',
+        ]);
+
+        $cuenta->update($datos);
+
+        return response()->json([
+            'success' => true,
+            'data' => $cuenta
+        ]);
+    }
+
+    // DELETE /api/cuentas/{id}
+    public function destroy($id)
+    {
+        $cuenta = Cuenta::where('id', $id)
+            ->where('user_id', 1) // Se usa 1 temporalmente
+            ->firstOrFail();
+
+        $cuenta->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cuenta eliminada correctamente'
         ]);
     }
 }
