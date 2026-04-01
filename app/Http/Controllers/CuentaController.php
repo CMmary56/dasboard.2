@@ -10,8 +10,15 @@ class CuentaController extends Controller
     // GET /api/cuentas
     public function index()
     {
-        // Se usa 1 temporalmente en lugar de auth()->id()
-        $cuentas = Cuenta::where('user_id', 1)
+        $userId = $this->resolveUserId();
+
+        $query = Cuenta::query();
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $cuentas = $query
             ->orderBy('tipo')
             ->get();
 
@@ -24,15 +31,36 @@ class CuentaController extends Controller
     // POST /api/cuentas
     public function store(Request $request)
     {
+        $userId = $this->resolveUserId();
+
+        if (!$userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No existe un usuario de prueba en la tabla users.'
+            ], 422);
+        }
+
         $datos = $request->validate([
             'tipo' => 'required|in:corriente,ahorro',
             'numero_cuenta' => 'required|string|max:20',
             'saldo' => 'required|numeric|min:0',
             'moneda' => 'in:PEN,USD',
+            'user_id' => 'sometimes|uuid',
         ]);
 
+        $targetUserId = $userId ?? ($datos['user_id'] ?? null);
+
+        if (!$targetUserId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Define TEST_USER_ID en .env o envia user_id en el body.'
+            ], 422);
+        }
+
+        unset($datos['user_id']);
+
         $cuenta = Cuenta::create(array_merge($datos, [
-            'user_id' => 1 // Se usa 1 temporalmente
+            'user_id' => $targetUserId
         ]));
 
         return response()->json([
@@ -44,9 +72,15 @@ class CuentaController extends Controller
     // GET /api/cuentas/{id}
     public function show($id)
     {
-        $cuenta = Cuenta::where('id', $id)
-            ->where('user_id', 1) // Se usa 1 temporalmente
-            ->firstOrFail();
+        $userId = $this->resolveUserId();
+
+        $query = Cuenta::where('id', $id);
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $cuenta = $query->firstOrFail();
 
         return response()->json([
             'success' => true,
@@ -57,9 +91,15 @@ class CuentaController extends Controller
     // PUT /api/cuentas/{id}
     public function update(Request $request, $id)
     {
-        $cuenta = Cuenta::where('id', $id)
-            ->where('user_id', 1) // Se usa 1 temporalmente
-            ->firstOrFail();
+        $userId = $this->resolveUserId();
+
+        $query = Cuenta::where('id', $id);
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $cuenta = $query->firstOrFail();
 
         $datos = $request->validate([
             'tipo' => 'sometimes|in:corriente,ahorro',
@@ -79,9 +119,15 @@ class CuentaController extends Controller
     // DELETE /api/cuentas/{id}
     public function destroy($id)
     {
-        $cuenta = Cuenta::where('id', $id)
-            ->where('user_id', 1) // Se usa 1 temporalmente
-            ->firstOrFail();
+        $userId = $this->resolveUserId();
+
+        $query = Cuenta::where('id', $id);
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $cuenta = $query->firstOrFail();
 
         $cuenta->delete();
 
@@ -89,5 +135,12 @@ class CuentaController extends Controller
             'success' => true,
             'message' => 'Cuenta eliminada correctamente'
         ]);
+    }
+
+    private function resolveUserId(): ?string
+    {
+        $testUserId = env('TEST_USER_ID');
+
+        return $testUserId !== null && $testUserId !== '' ? (string) $testUserId : null;
     }
 }
